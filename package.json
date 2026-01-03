@@ -1,13 +1,14 @@
 {
-    "name": "com.yanicksenn.taskview",
-    "version": "1.0.0",
-    "displayName": "Task View",
-    "description": "This package contains an In-Editor task view.",
-    "unity": "6000.0",
-    "unityRelease": "51f1",
-    "author": {
-        "name": "Yanick Senn",
-        "email": "info@yanicksenn.com",
-        "url": ""
-    }
+  "name": "com.yanicksenn.taskview",
+  "version": "1.0.1",
+  "displayName": "Task View",
+  "description": "This package contains an In-Editor task view.",
+  "unity": "6000.0",
+  "unityRelease": "51f1",
+  "author": {
+    "name": "Yanick Senn",
+    "email": "info@yanicksenn.com",
+    "url": ""
+  },
+  "dependencies": null
 }
