@@ -1,0 +1,25 @@
+{
+    "name": "YanickSenn.TaskView.Editor.Tests",
+    "rootNamespace": "YanickSenn.TaskView.Editor.Tests",
+    "references": [
+        "YanickSenn.TaskView",
+        "YanickSenn.TaskView.Editor",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
