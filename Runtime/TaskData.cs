@@ -5,6 +5,13 @@ using Object = UnityEngine.Object;
 
 namespace YanickSenn.TaskView
 {
+    public enum TaskPriority
+    {
+        P0,
+        P1,
+        P2
+    }
+
     [Serializable]
     public class TaskData
     {
@@ -12,6 +19,7 @@ namespace YanickSenn.TaskView
         public string title = "New Task";
         public string description = "";
         public bool isCompleted = false;
+        public TaskPriority priority = TaskPriority.P2;
         public string createdAt = DateTime.Now.ToString("O"); // ISO 8601
         public string updatedAt = DateTime.Now.ToString("O");
         public List<Object> links = new List<Object>();

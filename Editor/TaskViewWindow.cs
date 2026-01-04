@@ -25,6 +25,8 @@ namespace YanickSenn.TaskView.Editor
         private float _splitNormalizedPosition = 0.5f;
         private bool _isResizing;
 
+        private bool _showCompletedTasks = false;
+
         [MenuItem("Window/Task View")]
         public static void ShowWindow()
         {
@@ -156,8 +158,64 @@ namespace YanickSenn.TaskView.Editor
                 _taskReorderableList.DoLayoutList();
             }
 
+            EditorGUILayout.Space();
+
+            _showCompletedTasks = EditorGUILayout.Foldout(_showCompletedTasks, "Completed Tasks", true);
+            if (_showCompletedTasks && _serializedTaskList != null)
+            {
+                SerializedProperty tasksProp = _serializedTaskList.FindProperty("tasks");
+                for (int i = 0; i < tasksProp.arraySize; i++)
+                {
+                    SerializedProperty taskProp = tasksProp.GetArrayElementAtIndex(i);
+                    SerializedProperty isCompletedProp = taskProp.FindPropertyRelative("isCompleted");
+
+                    if (isCompletedProp.boolValue)
+                    {
+                        DrawCompletedTaskRow(taskProp, i);
+                    }
+                }
+            }
+
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
+        }
+
+        private void DrawCompletedTaskRow(SerializedProperty taskProp, int index)
+        {
+            SerializedProperty titleProp = taskProp.FindPropertyRelative("title");
+            SerializedProperty priorityProp = taskProp.FindPropertyRelative("priority");
+            SerializedProperty isCompletedProp = taskProp.FindPropertyRelative("isCompleted");
+            SerializedProperty updatedAtProp = taskProp.FindPropertyRelative("updatedAt");
+
+            EditorGUILayout.BeginHorizontal();
+            
+            GUILayout.Space(10); 
+
+            // Done (Checkbox) - Keep enabled so it can be unchecked
+            EditorGUI.BeginChangeCheck();
+            bool newCompleted = EditorGUILayout.Toggle(isCompletedProp.boolValue, GUILayout.Width(25));
+            if (EditorGUI.EndChangeCheck())
+            {
+                isCompletedProp.boolValue = newCompleted;
+                updatedAtProp.stringValue = DateTime.Now.ToString("O");
+            }
+
+            // Priority and Title - Make Read-Only
+            GUI.enabled = false;
+            EditorGUILayout.PropertyField(priorityProp, GUIContent.none, GUILayout.Width(60));
+
+            var style = new GUIStyle(EditorStyles.label);
+            style.normal.textColor = Color.gray;
+            EditorGUILayout.LabelField(titleProp.stringValue, style);
+            GUI.enabled = true;
+
+            // Select button - Keep enabled
+            if (GUILayout.Button(">", EditorStyles.miniButton, GUILayout.Width(20)))
+            {
+                _taskReorderableList.index = index;
+            }
+
+            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawTaskDetailPanel()
@@ -186,6 +244,7 @@ namespace YanickSenn.TaskView.Editor
             SerializedProperty titleProp = taskProp.FindPropertyRelative("title");
             SerializedProperty descProp = taskProp.FindPropertyRelative("description");
             SerializedProperty isCompletedProp = taskProp.FindPropertyRelative("isCompleted");
+            SerializedProperty priorityProp = taskProp.FindPropertyRelative("priority");
             SerializedProperty createdAtProp = taskProp.FindPropertyRelative("createdAt");
             SerializedProperty updatedAtProp = taskProp.FindPropertyRelative("updatedAt");
             SerializedProperty linksProp = taskProp.FindPropertyRelative("links");
@@ -202,6 +261,7 @@ namespace YanickSenn.TaskView.Editor
             descProp.stringValue = EditorGUILayout.TextArea(descProp.stringValue, GUILayout.Height(100));
 
             EditorGUILayout.Space();
+            EditorGUILayout.PropertyField(priorityProp);
             EditorGUILayout.PropertyField(isCompletedProp);
 
             // Dates (Read Only)
@@ -240,40 +300,91 @@ namespace YanickSenn.TaskView.Editor
             SerializedProperty tasksProp = _serializedTaskList.FindProperty("tasks");
             _taskReorderableList = new ReorderableList(_serializedTaskList, tasksProp, true, true, true, true);
 
+            _taskReorderableList.elementHeightCallback = (int index) =>
+            {
+                var element = tasksProp.GetArrayElementAtIndex(index);
+                var isCompletedProp = element.FindPropertyRelative("isCompleted");
+                if (isCompletedProp.boolValue)
+                {
+                    return 0;
+                }
+                return EditorGUIUtility.singleLineHeight + 6; // Standard height + padding
+            };
+
             _taskReorderableList.drawHeaderCallback = (Rect rect) =>
             {
-                EditorGUI.LabelField(rect, "Tasks");
+                float doneWidth = 25f;
+                float priorityWidth = 60f;
+                float titleWidth = rect.width - doneWidth - priorityWidth - 10f; // -10 for spacing
+
+                float x = rect.x;
+                
+                EditorGUI.LabelField(new Rect(x, rect.y, doneWidth, rect.height), "Done");
+                x += doneWidth + 5f;
+                
+                EditorGUI.LabelField(new Rect(x, rect.y, priorityWidth, rect.height), "Priority");
+                x += priorityWidth + 5f;
+                
+                EditorGUI.LabelField(new Rect(x, rect.y, titleWidth, rect.height), "Title");
             };
 
             _taskReorderableList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
             {
                 var element = tasksProp.GetArrayElementAtIndex(index);
                 var isCompletedProp = element.FindPropertyRelative("isCompleted");
+
+                // Filter check
+                if (isCompletedProp.boolValue)
+                {
+                    return;
+                }
+
                 var titleProp = element.FindPropertyRelative("title");
+                var priorityProp = element.FindPropertyRelative("priority");
+
+                // Draw background based on priority
+                // P0 = 0 (Red), P1 = 1 (Yellow), P2 = 2 (None)
+                if (priorityProp.enumValueIndex == 0) 
+                {
+                    EditorGUI.DrawRect(rect, new Color(1f, 0.3f, 0.3f, 0.2f));
+                }
+                else if (priorityProp.enumValueIndex == 1)
+                {
+                    EditorGUI.DrawRect(rect, new Color(1f, 0.9f, 0.2f, 0.2f));
+                }
 
                 rect.y += 2;
+                float height = EditorGUIUtility.singleLineHeight;
                 
+                float doneWidth = 25f;
+                float priorityWidth = 60f;
+                float titleWidth = rect.width - doneWidth - priorityWidth - 10f;
+
+                float x = rect.x;
+
                 // Checkbox
-                var toggleRect = new Rect(rect.x, rect.y, 20, EditorGUIUtility.singleLineHeight);
                 EditorGUI.BeginChangeCheck();
-                bool newCompleted = EditorGUI.Toggle(toggleRect, isCompletedProp.boolValue);
+                bool newCompleted = EditorGUI.Toggle(new Rect(x, rect.y, doneWidth, height), isCompletedProp.boolValue);
                 if (EditorGUI.EndChangeCheck())
                 {
                     isCompletedProp.boolValue = newCompleted;
                     element.FindPropertyRelative("updatedAt").stringValue = DateTime.Now.ToString("O");
                 }
+                x += doneWidth + 5f;
+
+                // Priority
+                EditorGUI.PropertyField(new Rect(x, rect.y, priorityWidth, height), priorityProp, GUIContent.none);
+                x += priorityWidth + 5f;
 
                 // Title
-                var titleRect = new Rect(rect.x + 25, rect.y, rect.width - 25, EditorGUIUtility.singleLineHeight);
-                
                 // Strikethrough style if completed
                 var style = new GUIStyle(EditorStyles.label);
                 if (newCompleted)
                 {
                     style.normal.textColor = Color.gray;
                 }
-
-                EditorGUI.LabelField(titleRect, titleProp.stringValue, style);
+                
+                EditorGUI.LabelField(new Rect(x, rect.y, titleWidth, height), titleProp.stringValue, style);
             };
 
             _taskReorderableList.onAddCallback = (ReorderableList list) =>
@@ -286,6 +397,7 @@ namespace YanickSenn.TaskView.Editor
                 element.FindPropertyRelative("title").stringValue = "New Task";
                 element.FindPropertyRelative("description").stringValue = "";
                 element.FindPropertyRelative("isCompleted").boolValue = false;
+                element.FindPropertyRelative("priority").enumValueIndex = (int)TaskPriority.P2;
                 element.FindPropertyRelative("createdAt").stringValue = DateTime.Now.ToString("O");
                 element.FindPropertyRelative("updatedAt").stringValue = DateTime.Now.ToString("O");
                 element.FindPropertyRelative("id").stringValue = Guid.NewGuid().ToString();
